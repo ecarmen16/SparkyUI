@@ -19,6 +19,31 @@ Standard ComfyUI containers and PyTorch wheels don't support sm_121. SparkyUI so
 2. Installing **PyTorch cu130** ARM64 wheels
 3. Compiling **SageAttention** with `TORCH_CUDA_ARCH_LIST="12.1"`
 4. Disabling **Triton/torch.compile** (doesn't support sm_121 yet)
+5. **Optimized for Grace-Blackwell unified memory architecture**
+
+## Unified Memory Architecture
+
+The DGX Spark's Grace-Blackwell architecture uses **unified memory** - a coherent memory fabric shared between CPU and GPU. This is fundamentally different from discrete GPUs and requires different optimization strategies.
+
+**Key insight: Don't fight the fabric.** Forcing everything GPU-side (`--gpu-only`, `--cache-none`) actually hurts performance.
+
+**Optimized flags (default in SparkyUI):**
+```bash
+--disable-pinned-memory   # Reduces overhead on unified fabric
+--force-fp16              # Enables SageAttention optimization
+--fp16-unet --fp16-vae --fp16-text-enc  # FP16 precision throughout
+--dont-upcast-attention   # Keeps attention in FP16 for speed
+```
+
+**What NOT to use:**
+- `--gpu-only` - fights the unified memory fabric, hurts performance
+- `--cache-none` - disables natural caching, slows model loading
+- `--disable-mmap` - prevents memory-mapped model loading
+
+**CUDA environment variables** are also tuned for unified memory:
+- `CUDA_MANAGED_FORCE_DEVICE_ALLOC=1` - prefer GPU allocation
+- `PYTORCH_NO_CUDA_MEMORY_CACHING=1` - let fabric manage memory
+- `OMP_NUM_THREADS=20` - utilize all 20 ARM cores
 
 ## Quick Start
 
@@ -132,12 +157,48 @@ The entrypoint auto-clones it. Check logs:
 docker compose logs | grep -i manager
 ```
 
+## Host-Level GPU Optimizations (Optional)
+
+For maximum performance, apply these optimizations on the **host** (not in Docker):
+
+```bash
+# Lock GPU clocks to maximum (3003 MHz) - prevents throttling
+sudo nvidia-smi -lgc 3003,3003
+
+# Enable core clock boost (GPU core > memory clock for compute)
+sudo nvidia-smi boost-slider --vboost 1
+
+# Enable persistence mode (reduces driver load latency)
+sudo nvidia-smi -pm 1
+
+# Verify settings
+nvidia-smi --query-gpu=clocks.sm,clocks.max.sm,persistence_mode --format=csv
+```
+
+**Note:** GPU clock settings don't persist across reboots due to GB10 firmware behavior. Re-apply after each boot.
+
+## SageAttention Notes
+
+SageAttention PR #297 added sm_121 support but was merged then reverted due to stability issues. Our approach:
+
+- Build SageAttention from main branch with `TORCH_CUDA_ARCH_LIST="12.1"`
+- Disable Triton via `TORCHDYNAMO_DISABLE=1` (Triton doesn't support sm_121a)
+- This gives working SageAttention without the unstable PR #297 changes
+
+For full Triton support (more complex), see [HurbaLurba's DGX-SPARK-COMFYUI-DOCKER](https://github.com/HurbaLurba/DGX-SPARK-COMFYUI-DOCKER) which builds custom Triton from source.
+
 ## Future
 
 When these land, SparkyUI can be simplified:
 - [ ] PyTorch native sm_121 support → remove explicit `TORCH_CUDA_ARCH_LIST`
 - [ ] Triton sm_121 support → remove `TORCHDYNAMO_DISABLE`
 - [ ] SageAttention prebuilt ARM64 wheels → remove source build
+
+## Credits
+
+- Unified memory architecture insights from [HurbaLurba's DGX-SPARK-COMFYUI-DOCKER](https://github.com/HurbaLurba/DGX-SPARK-COMFYUI-DOCKER)
+- SageAttention by [thu-ml](https://github.com/thu-ml/SageAttention)
+- ComfyUI by [comfyanonymous](https://github.com/comfyanonymous/ComfyUI)
 
 ## License
 
