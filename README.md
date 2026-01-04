@@ -21,6 +21,13 @@ Standard ComfyUI containers and PyTorch wheels don't support sm_121. SparkyUI so
 4. Disabling **Triton/torch.compile** (doesn't support sm_121 yet)
 5. **Optimized for Grace-Blackwell unified memory architecture**
 
+## What's Included
+
+- **ComfyUI** (latest master branch)
+- **ComfyUI-Manager** - auto-installed on first run for easy custom node management
+- **SageAttention** - compiled natively for sm_121 (Blackwell tensor cores)
+- **PyTorch 2.9.1+cu130** - ARM64 wheels with CUDA 13.0 support
+
 ## Unified Memory Architecture
 
 The DGX Spark's Grace-Blackwell architecture uses **unified memory** - a coherent memory fabric shared between CPU and GPU. This is fundamentally different from discrete GPUs and requires different optimization strategies.
@@ -49,7 +56,7 @@ The DGX Spark's Grace-Blackwell architecture uses **unified memory** - a coheren
 
 ```bash
 # Clone
-git clone https://github.com/YOUR_USERNAME/SparkyUI.git
+git clone https://github.com/ecarmen16/SparkyUI.git
 cd SparkyUI
 
 # Configure paths
