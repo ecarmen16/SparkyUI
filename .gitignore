@@ -1,0 +1,60 @@
+# Project-specific internal docs
+CLAUDE.md
+
+# Environment (contains local paths)
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Runtime directories - ignore contents but keep .gitkeep
+custom_nodes/*
+!custom_nodes/.gitkeep
+
+output/*
+!output/.gitkeep
+
+input/*
+!input/.gitkeep
+
+workflows/*
+!workflows/.gitkeep
+
+# Wheels directory - for prebuilt ARM64/sm_121 binaries
+# Ignore contents except .gitkeep (add wheels explicitly if needed)
+wheels/*
+!wheels/.gitkeep

@@ -1,0 +1,30 @@
+# Runtime data (mounted as volumes)
+custom_nodes/
+output/
+input/
+workflows/
+
+# Git
+.git/
+.gitignore
+
+# Environment and secrets
+.env
+*.env.local
+
+# Documentation (not needed in image)
+*.md
+CLAUDE.md
+README.md
+LICENSE
+
+# IDE
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Prebuilt wheels (built separately)
+wheels/
