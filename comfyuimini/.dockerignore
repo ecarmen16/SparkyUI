@@ -1,0 +1,21 @@
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# Environment
+.env*
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts (will be generated in container)
+dist/

@@ -63,4 +63,63 @@ services:
       # Wheel cache (optional - for prebuilt wheels)
       - ${SPARKYUI_DATA_PATH}/wheels:/opt/wheels
 
+    networks:
+      - sparky_net
+
+    # Health check - ComfyUI takes time to load, so generous start period
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8188/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+
     restart: unless-stopped
+
+  # ComfyUIMini - Mobile-friendly UI
+  # Access at http://<host>:3000
+  comfyuimini:
+    build:
+      context: ./comfyuimini
+      dockerfile: Dockerfile
+      args:
+        COMFYUIMINI_REF: "${COMFYUIMINI_REF:-main}"
+
+    image: comfyuimini:latest
+    container_name: comfyuimini
+
+    ports:
+      - "${COMFYUIMINI_PORT:-3000}:3000"
+
+    environment:
+      # node-config override - connects to comfyui container via docker network
+      NODE_CONFIG: >-
+        {
+          "app_port": 3000,
+          "comfyui_url": "http://comfyui:8188",
+          "comfyui_ws_url": "ws://comfyui:8188",
+          "output_dir": "/shared/output",
+          "reject_unauthorised_cert": false
+        }
+
+    volumes:
+      # Share output directory with ComfyUI for gallery feature (read-only)
+      - ${SPARKYUI_DATA_PATH}/output:/shared/output:ro
+      # Persist server-side workflows
+      - comfyuimini_workflows:/app/workflows
+
+    networks:
+      - sparky_net
+
+    depends_on:
+      comfyui:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+networks:
+  sparky_net:
+    driver: bridge
+
+volumes:
+  comfyuimini_workflows:

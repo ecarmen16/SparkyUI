@@ -25,6 +25,7 @@ Standard ComfyUI containers and PyTorch wheels don't support sm_121. SparkyUI so
 
 - **ComfyUI** (latest master branch)
 - **ComfyUI-Manager** - auto-installed on first run for easy custom node management
+- **ComfyUIMini** - mobile-friendly web UI for phones/tablets (separate container)
 - **SageAttention** - compiled natively for sm_121 (Blackwell tensor cores)
 - **PyTorch 2.9.1+cu130** - ARM64 wheels with CUDA 13.0 support
 
@@ -73,7 +74,9 @@ docker compose up -d
 docker compose logs -f
 ```
 
-**Access:** http://localhost:8188 (or your DGX Spark's IP on LAN)
+**Access:**
+- **ComfyUI (Desktop):** http://localhost:8188
+- **ComfyUIMini (Mobile):** http://localhost:3000
 
 ## Requirements
 
@@ -102,24 +105,26 @@ SAGEATTN_REF=main
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     DGX Spark Host                          │
-│  Ubuntu 24.04 (DGX OS 7) / Driver 580.x                     │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │            Docker Container (sparkyui:cu130)         │   │
-│  │                                                      │   │
-│  │  CUDA 13.0.2 + PyTorch 2.9.1+cu130                  │   │
-│  │  SageAttention 2.2.0 (compiled for sm_121)          │   │
-│  │  ComfyUI 0.7.x + ComfyUI-Manager                    │   │
-│  │                                                      │   │
-│  │  Key env vars:                                       │   │
-│  │    TORCH_CUDA_ARCH_LIST="12.1"                      │   │
-│  │    TORCHDYNAMO_DISABLE="1"                          │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                           │                                 │
-│                    Port 8188 (LAN)                          │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                        DGX Spark Host                             │
+│  Ubuntu 24.04 (DGX OS 7) / Driver 580.x                          │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │                    Docker Network (sparky_net)              │  │
+│  │                                                             │  │
+│  │  ┌─────────────────────────┐  ┌──────────────────────────┐ │  │
+│  │  │  comfyui (sparkyui:cu130)│  │  comfyuimini (node:20)   │ │  │
+│  │  │                         │  │                          │ │  │
+│  │  │  CUDA 13.0.2 + PyTorch  │◄─┤  Mobile-friendly UI      │ │  │
+│  │  │  SageAttention (sm_121) │  │  REST + WebSocket proxy  │ │  │
+│  │  │  ComfyUI + Manager      │  │                          │ │  │
+│  │  │                         │  │  Shares /output volume   │ │  │
+│  │  └───────────┬─────────────┘  └────────────┬─────────────┘ │  │
+│  │              │                             │                │  │
+│  └──────────────┼─────────────────────────────┼────────────────┘  │
+│                 │                             │                    │
+│          Port 8188 (Desktop)           Port 3000 (Mobile)         │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Version Compatibility
@@ -184,6 +189,31 @@ nvidia-smi --query-gpu=clocks.sm,clocks.max.sm,persistence_mode --format=csv
 
 **Note:** GPU clock settings don't persist across reboots due to GB10 firmware behavior. Re-apply after each boot.
 
+## ComfyUIMini (Mobile UI)
+
+SparkyUI includes [ComfyUIMini](https://github.com/ImDarkTom/ComfyUIMini) - a lightweight, mobile-friendly web UI that runs in a separate container.
+
+**Features:**
+- Responsive design optimized for phones and tablets
+- Simplified workflow execution interface
+- Built-in image gallery (reads from shared output directory)
+- Import workflows from ComfyUI in "API Format"
+- Multiple themes (dark, light, aurora, nord, etc.)
+
+**How it works:**
+- Runs as a Node.js Express server in its own container (~150MB)
+- Connects to ComfyUI via internal Docker network (`http://comfyui:8188`)
+- Proxies REST API calls and WebSocket connections
+- Shares the output directory for gallery viewing
+
+**Access:** `http://<your-dgx-ip>:3000`
+
+**Build only ComfyUIMini** (if ComfyUI already built):
+```bash
+docker compose build comfyuimini
+docker compose up -d comfyuimini
+```
+
 ## SageAttention Notes
 
 SageAttention PR #297 added sm_121 support but was merged then reverted due to stability issues. Our approach:
@@ -204,8 +234,9 @@ When these land, SparkyUI can be simplified:
 ## Credits
 
 - Unified memory architecture insights from [HurbaLurba's DGX-SPARK-COMFYUI-DOCKER](https://github.com/HurbaLurba/DGX-SPARK-COMFYUI-DOCKER)
-- SageAttention by [thu-ml](https://github.com/thu-ml/SageAttention)
-- ComfyUI by [comfyanonymous](https://github.com/comfyanonymous/ComfyUI)
+- [ComfyUIMini](https://github.com/ImDarkTom/ComfyUIMini) by ImDarkTom
+- [SageAttention](https://github.com/thu-ml/SageAttention) by thu-ml
+- [ComfyUI](https://github.com/comfyanonymous/ComfyUI) by comfyanonymous
 
 ## License
 
